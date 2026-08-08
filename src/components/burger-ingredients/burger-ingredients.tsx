@@ -1,14 +1,26 @@
 import { useState, useRef, useEffect, FC } from 'react';
 import { useInView } from 'react-intersection-observer';
-
+import { useDispatch, useSelector } from '../../services/store';
+import { fetchIngredients } from '../../services/slices/ingredientsSlice';
+import {
+  getIngredients,
+  getIngredientsLoading
+} from '../../services/selectors/ingredientsSelectors';
 import { TTabMode } from '@utils-types';
 import { BurgerIngredientsUI } from '../ui/burger-ingredients';
+import { Preloader } from '@ui';
 
 export const BurgerIngredients: FC = () => {
-  /** TODO: взять переменные из стора */
-  const buns = [];
-  const mains = [];
-  const sauces = [];
+  const dispatch = useDispatch();
+
+  // Берём данные из стора
+  const ingredients = useSelector(getIngredients);
+  const loading = useSelector(getIngredientsLoading);
+
+  // Фильтруем ингредиенты по категориям
+  const buns = ingredients.filter((item) => item.type === 'bun');
+  const mains = ingredients.filter((item) => item.type === 'main');
+  const sauces = ingredients.filter((item) => item.type === 'sauce');
 
   const [currentTab, setCurrentTab] = useState<TTabMode>('bun');
   const titleBunRef = useRef<HTMLHeadingElement>(null);
@@ -27,6 +39,14 @@ export const BurgerIngredients: FC = () => {
     threshold: 0
   });
 
+  // Загружаем ингредиенты при монтировании
+  useEffect(() => {
+    if (!ingredients.length) {
+      dispatch(fetchIngredients());
+    }
+  }, [dispatch, ingredients.length]);
+
+  // Обновляем активную вкладку при скролле
   useEffect(() => {
     if (inViewBuns) {
       setCurrentTab('bun');
@@ -47,7 +67,10 @@ export const BurgerIngredients: FC = () => {
       titleSaucesRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  return null;
+  // Показываем прелоадер во время загрузки
+  if (loading) {
+    return <Preloader />;
+  }
 
   return (
     <BurgerIngredientsUI

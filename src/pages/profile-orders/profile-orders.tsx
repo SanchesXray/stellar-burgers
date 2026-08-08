@@ -1,10 +1,19 @@
 import { ProfileOrdersUI } from '@ui-pages';
 import { TOrder } from '@utils-types';
-import { FC } from 'react';
+import { FC, useEffect } from 'react';
+import { useDispatch, useSelector } from '../../services/store';
+import { fetchUserOrders } from '../../services/slices/userSlice';
+import { getUserOrders } from '../../services/selectors/userSelectors';
 
 export const ProfileOrders: FC = () => {
-  /** TODO: взять переменную из стора */
-  const orders: TOrder[] = [];
+  const dispatch = useDispatch();
+  // Используем селектор для получения заказов
+  const orders: TOrder[] = useSelector(getUserOrders);
+
+  // Загружаем историю заказов
+  useEffect(() => {
+    dispatch(fetchUserOrders());
+  }, [dispatch]);
 
   return <ProfileOrdersUI orders={orders} />;
 };
