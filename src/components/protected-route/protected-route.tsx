@@ -1,28 +1,50 @@
 // src/components/protected-route/protected-route.tsx
-import { ReactNode } from 'react';
+
+import { ReactElement } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from '../../services/store';
-import { getIsLoggedIn } from '../../services/selectors/userSelectors';
-import { getCookie } from '../../utils/cookie';
+import {
+  getIsAuthChecked,
+  getUser
+} from '../../services/selectors/userSelectors';
+import { Preloader } from '@ui';
 
 type ProtectedRouteProps = {
-  children: ReactNode;
+  onlyUnAuth?: boolean;
+  children: ReactElement;
 };
 
-export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+export const ProtectedRoute = ({
+  onlyUnAuth = false,
+  children
+}: ProtectedRouteProps) => {
   const location = useLocation();
-  const isLoggedIn = useSelector(getIsLoggedIn);
 
-  // проверка есть ли токен в cookies?
-  const accessToken = getCookie('accessToken');
-  const hasToken = !!accessToken;
+  const user = useSelector(getUser);
+  const isAuthChecked = useSelector(getIsAuthChecked);
 
-  // Если нет токена и не залогинены — редирект на логин
-  if (!hasToken && !isLoggedIn) {
+  // Пока сервер не ответил на проверку авторизации,
+  // не делаем никаких редиректов.
+  if (!isAuthChecked) {
+    return <Preloader />;
+  }
+
+  // Приватный маршрут для авторизованного пользователя.
+  // Если пользователь не авторизован — отправляем на login
+  // и сохраняем исходный маршрут.
+  if (!onlyUnAuth && !user) {
     return <Navigate to='/login' state={{ from: location }} replace />;
   }
 
-  // Если есть токен — показываем страницу (даже если isLoggedIn = false)
+  // Маршрут только для неавторизованного пользователя.
+  // Если пользователь уже авторизован, возвращаем его
+  // на маршрут, который он хотел открыть до авторизации.
+  if (onlyUnAuth && user) {
+    const from = location.state?.from || { pathname: '/' };
+
+    return <Navigate to={from} replace />;
+  }
+
   return children;
 };
 

@@ -22,23 +22,33 @@ export type TOrderResponse = {
 // Асинхронный thunk для создания заказа
 export const createOrder = createAsyncThunk<TOrderResponse, string[]>(
   'order/create',
-  async (data: string[]) => {
+  async (data) => {
     const response = await orderBurgerApi(data);
+
     return response.order;
   }
 );
 
-export const fetchOrderByNumber = createAsyncThunk(
+// Асинхронный thunk для получения заказа по номеру (для просмотра)
+export const fetchOrderByNumber = createAsyncThunk<TOrder, number>(
   'order/fetchByNumber',
-  async (number: number) => {
+  async (number) => {
     const response = await getOrderByNumberApi(number);
+
     return response.orders[0];
   }
 );
 
-// Тип состояния заказа
 type TOrderState = {
+  // Последний успешно созданный заказ.
   order: TOrder | null;
+
+  // Заказ, который пользователь сейчас просматривает.
+  orderView: TOrder | null;
+
+  // Номер заказа, который пользователь запрашивал для просмотра.
+  orderViewNumber: number | null;
+
   loading: boolean;
   error: string | null;
 };
@@ -46,6 +56,8 @@ type TOrderState = {
 // Начальное состояние
 const initialState: TOrderState = {
   order: null,
+  orderView: null,
+  orderViewNumber: null,
   loading: false,
   error: null
 };
@@ -54,15 +66,23 @@ const initialState: TOrderState = {
 const orderSlice = createSlice({
   name: 'order',
   initialState,
+
   reducers: {
     clearOrder: (state) => {
       state.order = null;
       state.error = null;
       state.loading = false;
+    },
+
+    clearOrderView: (state) => {
+      state.orderView = null;
+      state.orderViewNumber = null;
     }
   },
+
   extraReducers: (builder) => {
     builder
+      // Создание заказа
       .addCase(createOrder.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -88,13 +108,16 @@ const orderSlice = createSlice({
         state.loading = false;
         state.error = action.error.message || 'Ошибка создания заказа';
       })
-      .addCase(fetchOrderByNumber.pending, (state) => {
+
+      // Получение заказа для просмотра
+      .addCase(fetchOrderByNumber.pending, (state, action) => {
         state.loading = true;
         state.error = null;
+        state.orderViewNumber = action.meta.arg;
       })
       .addCase(fetchOrderByNumber.fulfilled, (state, action) => {
         state.loading = false;
-        state.order = action.payload;
+        state.orderView = action.payload;
       })
       .addCase(fetchOrderByNumber.rejected, (state, action) => {
         state.loading = false;
@@ -104,7 +127,7 @@ const orderSlice = createSlice({
 });
 
 // Экспорт действий
-export const { clearOrder } = orderSlice.actions;
+export const { clearOrder, clearOrderView } = orderSlice.actions;
 
 // Экспорт редьюсера
 export default orderSlice.reducer;

@@ -1,9 +1,8 @@
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
-import { useDispatch, useSelector } from '../../services/store';
+import { useDispatch } from '../../services/store';
 import { getUser } from '../../services/slices/userSlice';
-import { getIsLoggedIn } from '../../services/selectors/userSelectors';
-import { getCookie } from '../../utils/cookie';
+import { fetchIngredients } from '../../services/slices/ingredientsSlice';
 import {
   ConstructorPage,
   Feed,
@@ -15,6 +14,7 @@ import {
   ProfileOrders,
   NotFound404
 } from '@pages';
+
 import {
   AppHeader,
   Modal,
@@ -22,23 +22,28 @@ import {
   OrderInfo,
   ProtectedRoute
 } from '@components';
+
 import '../../index.css';
 import styles from './app.module.css';
 
 const App = () => {
   const dispatch = useDispatch();
   const location = useLocation();
-  const background = location.state?.background;
   const navigate = useNavigate();
-  const isLoggedIn = useSelector(getIsLoggedIn);
 
-  // Получаем статус запроса getUser
+  const background = location.state?.background;
+
+  // Загружаем ингредиенты один раз при запуске приложения.
+  // Благодаря этому данные доступны всем страницам приложения.
   useEffect(() => {
-    const accessToken = getCookie('accessToken');
-    if (accessToken && !isLoggedIn) {
-      dispatch(getUser());
-    }
-  }, []);
+    dispatch(fetchIngredients());
+  }, [dispatch]);
+
+  // Проверяем авторизацию один раз при запуске.
+  // Пока проверка не завершена, ProtectedRoute показывает Preloader.
+  useEffect(() => {
+    dispatch(getUser());
+  }, [dispatch]);
 
   const handleModalClose = () => {
     navigate(-1);
@@ -48,18 +53,55 @@ const App = () => {
     <div className={styles.app}>
       <AppHeader />
 
+      {/* Основные маршруты.
+          Если открыта модалка, в качестве location используется background,
+          поэтому под модалкой остаётся предыдущая страница. */}
       <Routes location={background || location}>
         {/* Публичные маршруты */}
         <Route path='/' element={<ConstructorPage />} />
         <Route path='/feed' element={<Feed />} />
 
-        {/* Страницы авторизации */}
-        <Route path='/login' element={<Login />} />
-        <Route path='/register' element={<Register />} />
-        <Route path='/forgot-password' element={<ForgotPassword />} />
-        <Route path='/reset-password' element={<ResetPassword />} />
+        {/* Прямой переход на заказ из ленты */}
+        <Route path='/feed/:number' element={<OrderInfo />} />
 
-        {/* Защищённые маршруты (ТОЛЬКО ДЛЯ АВТОРИЗОВАННЫХ) */}
+        {/* Страницы авторизации доступны только неавторизованным */}
+        <Route
+          path='/login'
+          element={
+            <ProtectedRoute onlyUnAuth>
+              <Login />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path='/register'
+          element={
+            <ProtectedRoute onlyUnAuth>
+              <Register />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path='/forgot-password'
+          element={
+            <ProtectedRoute onlyUnAuth>
+              <ForgotPassword />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path='/reset-password'
+          element={
+            <ProtectedRoute onlyUnAuth>
+              <ResetPassword />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Защищённые маршруты (только для авторизованных) */}
         <Route
           path='/profile'
           element={
@@ -68,6 +110,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
         <Route
           path='/profile/orders'
           element={
@@ -77,13 +120,28 @@ const App = () => {
           }
         />
 
-        {/* 404 */}
+        {/* Прямой переход на заказ из истории */}
+        <Route
+          path='/profile/orders/:number'
+          element={
+            <ProtectedRoute>
+              <OrderInfo />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Прямой переход на ингредиент */}
+        <Route path='/ingredients/:id' element={<IngredientDetails />} />
+
+        {/* Страница 404 */}
         <Route path='*' element={<NotFound404 />} />
       </Routes>
 
-      {/* Модалки */}
+      {/* Модальные маршруты.
+          Они используются только при наличии background. */}
       {background && (
         <Routes>
+          {/* Детали заказа из ленты */}
           <Route
             path='/feed/:number'
             element={
@@ -92,6 +150,8 @@ const App = () => {
               </Modal>
             }
           />
+
+          {/* Детали ингредиента */}
           <Route
             path='/ingredients/:id'
             element={
@@ -100,6 +160,8 @@ const App = () => {
               </Modal>
             }
           />
+
+          {/* Детали заказа из истории */}
           <Route
             path='/profile/orders/:number'
             element={

@@ -10,18 +10,21 @@ import {
 import { TUser, TOrder } from '@utils-types';
 import { deleteCookie, setCookie } from '../../utils/cookie';
 
-// Асинхронные thunks
+// Авторизация пользователя
 export const loginUser = createAsyncThunk(
   'user/login',
   async ({ email, password }: { email: string; password: string }) => {
     const response = await loginUserApi({ email, password });
+
     // Сохраняем токены в cookies
     setCookie('accessToken', response.accessToken);
     localStorage.setItem('refreshToken', response.refreshToken);
+
     return response.user;
   }
 );
 
+// Регистрация пользователя
 export const registerUser = createAsyncThunk(
   'user/register',
   async ({
@@ -33,41 +36,54 @@ export const registerUser = createAsyncThunk(
     name: string;
     password: string;
   }) => {
-    const response = await registerUserApi({ email, name, password });
+    const response = await registerUserApi({
+      email,
+      name,
+      password
+    });
+
     setCookie('accessToken', response.accessToken);
     localStorage.setItem('refreshToken', response.refreshToken);
+
     return response.user;
   }
 );
 
+// Выход пользователя
 export const logoutUser = createAsyncThunk('user/logout', async () => {
   await logoutApi();
+
   deleteCookie('accessToken');
   localStorage.removeItem('refreshToken');
 });
 
+// Проверка текущего пользователя
 export const getUser = createAsyncThunk('user/get', async () => {
   const response = await getUserApi();
 
   if (!response || !response.success) {
-    return Promise.reject(new Error('Пользователь не авторизован'));
+    throw new Error('Пользователь не авторизован');
   }
+
   return response.user;
 });
 
+// Обновление данных пользователя
 export const updateUser = createAsyncThunk(
   'user/update',
   async (userData: Partial<TUser>) => {
     const response = await updateUserApi(userData);
+
     return response.user;
   }
 );
 
-//  Thunk для истории заказов
+// Получение истории заказов пользователя
 export const fetchUserOrders = createAsyncThunk(
   'user/fetchOrders',
   async () => {
     const response = await getOrdersApi();
+
     return response;
   }
 );
@@ -77,6 +93,7 @@ type TUserState = {
   user: TUser | null;
   isLoggedIn: boolean;
   isLoading: boolean;
+  isAuthChecked: boolean;
   error: string | null;
   orders: TOrder[];
 };
@@ -86,6 +103,7 @@ const initialState: TUserState = {
   user: null,
   isLoggedIn: false,
   isLoading: false,
+  isAuthChecked: false,
   error: null,
   orders: []
 };
@@ -94,6 +112,7 @@ const initialState: TUserState = {
 const userSlice = createSlice({
   name: 'user',
   initialState,
+
   reducers: {
     // Синхронный выход (очистка состояния)
     logout: (state) => {
@@ -103,9 +122,10 @@ const userSlice = createSlice({
       state.orders = [];
     }
   },
+
   extraReducers: (builder) => {
     builder
-      // Логин
+      // Авторизация
       .addCase(loginUser.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -119,6 +139,7 @@ const userSlice = createSlice({
         state.isLoading = false;
         state.error = action.error.message || 'Ошибка входа';
       })
+
       // Регистрация
       .addCase(registerUser.pending, (state) => {
         state.isLoading = true;
@@ -133,6 +154,7 @@ const userSlice = createSlice({
         state.isLoading = false;
         state.error = action.error.message || 'Ошибка регистрации';
       })
+
       // Выход
       .addCase(logoutUser.pending, (state) => {
         state.isLoading = true;
@@ -146,21 +168,26 @@ const userSlice = createSlice({
       .addCase(logoutUser.rejected, (state) => {
         state.isLoading = false;
       })
-      // Получение пользователя
+
+      // Проверка авторизации пользователя
       .addCase(getUser.pending, (state) => {
-        state.isLoading = true;
+        state.isAuthChecked = false;
         state.error = null;
       })
       .addCase(getUser.fulfilled, (state, action) => {
-        state.isLoading = false;
+        state.isAuthChecked = true;
         state.user = action.payload;
         state.isLoggedIn = true;
       })
-      .addCase(getUser.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.error.message || 'Ошибка получения пользователя';
+      .addCase(getUser.rejected, (state) => {
+        // Неавторизованный пользователь — штатная ситуация, не ошибка формы.
+        state.isAuthChecked = true;
+        state.user = null;
+        state.isLoggedIn = false;
+        state.error = null;
       })
-      // Обновление пользователя
+
+      // Обновление данных пользователя
       .addCase(updateUser.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -173,6 +200,7 @@ const userSlice = createSlice({
         state.isLoading = false;
         state.error = action.error.message || 'Ошибка обновления данных';
       })
+
       // История заказов
       .addCase(fetchUserOrders.pending, (state) => {
         state.isLoading = true;

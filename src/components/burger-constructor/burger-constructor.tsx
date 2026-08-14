@@ -1,12 +1,12 @@
 import { FC, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from '../../services/store';
-import { useNavigate } from 'react-router-dom';
 import { getConstructorItems } from '../../services/selectors/constructorSelectors';
 import {
   getOrder,
   getOrderLoading
 } from '../../services/selectors/orderSelectors';
-import { getIsLoggedIn } from '../../services/selectors/userSelectors';
+import { getUser } from '../../services/selectors/userSelectors';
 import { createOrder, clearOrder } from '../../services/slices/orderSlice';
 import { clearConstructor } from '../../services/slices/constructorSlice';
 import { fetchFeeds } from '../../services/slices/feedSlice';
@@ -17,12 +17,13 @@ import { BurgerConstructorUI } from '@ui';
 export const BurgerConstructor: FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Получаем данные из стора
   const constructorItems = useSelector(getConstructorItems);
   const orderRequest = useSelector(getOrderLoading);
   const orderModalData = useSelector(getOrder);
-  const isLoggedIn = useSelector(getIsLoggedIn);
+  const user = useSelector(getUser);
 
   // Обработчик клика по кнопке "Оформить заказ"
   const onOrderClick = () => {
@@ -36,9 +37,13 @@ export const BurgerConstructor: FC = () => {
       return;
     }
 
-    // Проверка авторизации
-    if (!isLoggedIn) {
-      navigate('/login', { state: { from: '/' } });
+    // Заказы могут делать только авторизованные пользователи.
+    // Авторизацию определяем по наличию пользователя в store.
+    if (!user) {
+      navigate('/login', {
+        state: { from: location },
+        replace: true
+      });
       return;
     }
 
@@ -53,7 +58,10 @@ export const BurgerConstructor: FC = () => {
     dispatch(createOrder(ingredientsIds))
       .unwrap()
       .then(() => {
-        // Обновляем ленту заказов
+        // Очищаем конструктор только после успешного ответа сервера.
+        dispatch(clearConstructor());
+
+        // Обновляем данные ленты и истории заказов.
         dispatch(fetchFeeds());
         // Обновляем историю заказов пользователя
         dispatch(fetchUserOrders());
@@ -64,10 +72,9 @@ export const BurgerConstructor: FC = () => {
       });
   };
 
-  // Закрытие модалки с номером заказа
+  // Закрытие модалки — только очищаем данные заказа, НЕ конструктор
   const closeOrderModal = () => {
     dispatch(clearOrder());
-    dispatch(clearConstructor());
   };
 
   // Подсчёт общей стоимости
@@ -75,7 +82,8 @@ export const BurgerConstructor: FC = () => {
     () =>
       (constructorItems.bun ? constructorItems.bun.price * 2 : 0) +
       constructorItems.ingredients.reduce(
-        (s: number, v: TConstructorIngredient) => s + v.price,
+        (sum: number, ingredient: TConstructorIngredient) =>
+          sum + ingredient.price,
         0
       ),
     [constructorItems]

@@ -1,9 +1,12 @@
 import { FC, useMemo, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from '../../services/store';
-import { fetchOrderByNumber } from '../../services/slices/orderSlice';
 import {
-  getOrder,
+  fetchOrderByNumber,
+  clearOrderView
+} from '../../services/slices/orderSlice';
+import {
+  getOrderView,
   getOrderLoading
 } from '../../services/selectors/orderSelectors';
 import { getIngredients } from '../../services/selectors/ingredientsSelectors';
@@ -15,7 +18,7 @@ export const OrderInfo: FC = () => {
   const dispatch = useDispatch();
   const { number } = useParams<{ number: string }>();
   // Получаем данные заказа и ингредиенты из стора
-  const orderData = useSelector(getOrder);
+  const orderData = useSelector(getOrderView);
   const ingredients = useSelector(getIngredients);
   const loading = useSelector(getOrderLoading);
 
@@ -24,10 +27,16 @@ export const OrderInfo: FC = () => {
     if (number) {
       dispatch(fetchOrderByNumber(Number(number)));
     }
+    // Очищаем просмотр при размонтировании
+    return () => {
+      dispatch(clearOrderView());
+    };
   }, [dispatch, number]);
   /* Готовим данные для отображения */
   const orderInfo = useMemo(() => {
-    if (!orderData || !ingredients.length) return null;
+    if (!orderData || !ingredients.length) {
+      return null;
+    }
 
     const date = new Date(orderData.createdAt);
 
@@ -36,17 +45,20 @@ export const OrderInfo: FC = () => {
     };
 
     const ingredientsInfo = orderData.ingredients.reduce(
-      (acc: TIngredientsWithCount, item) => {
-        if (!acc[item]) {
-          const ingredient = ingredients.find((ing) => ing._id === item);
+      (acc: TIngredientsWithCount, ingredientId) => {
+        if (!acc[ingredientId]) {
+          const ingredient = ingredients.find(
+            (item) => item._id === ingredientId
+          );
+
           if (ingredient) {
-            acc[item] = {
+            acc[ingredientId] = {
               ...ingredient,
               count: 1
             };
           }
         } else {
-          acc[item].count++;
+          acc[ingredientId].count++;
         }
 
         return acc;
@@ -55,7 +67,7 @@ export const OrderInfo: FC = () => {
     );
 
     const total = Object.values(ingredientsInfo).reduce(
-      (acc, item) => acc + item.price * item.count,
+      (sum, ingredient) => sum + ingredient.price * ingredient.count,
       0
     );
 

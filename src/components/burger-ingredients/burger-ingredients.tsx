@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, FC } from 'react';
 import { useInView } from 'react-intersection-observer';
-import { useDispatch, useSelector } from '../../services/store';
-import { fetchIngredients } from '../../services/slices/ingredientsSlice';
+import { useSelector } from '../../services/store';
 import {
   getIngredients,
   getIngredientsLoading
@@ -11,8 +10,6 @@ import { BurgerIngredientsUI } from '../ui/burger-ingredients';
 import { Preloader } from '@ui';
 
 export const BurgerIngredients: FC = () => {
-  const dispatch = useDispatch();
-
   // Берём данные из стора
   const ingredients = useSelector(getIngredients);
   const loading = useSelector(getIngredientsLoading);
@@ -38,13 +35,6 @@ export const BurgerIngredients: FC = () => {
   const [saucesRef, inViewSauces] = useInView({
     threshold: 0
   });
-
-  // Загружаем ингредиенты при монтировании
-  useEffect(() => {
-    if (!ingredients.length) {
-      dispatch(fetchIngredients());
-    }
-  }, [dispatch, ingredients.length]);
 
   // Обновляем активную вкладку при скролле
   useEffect(() => {
