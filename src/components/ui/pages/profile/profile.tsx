@@ -22,7 +22,16 @@ export const ProfileUI: FC<ProfileUIProps> = ({
     <form
       className={`mt-30 ${styles.form} ${commonStyles.form}`}
       onSubmit={handleSubmit}
+      autoComplete='off'
     >
+      {/* Скрытые поля, чтобы браузер не подставлял сохранённый пароль в форму профиля */}
+      <input type='text' name='fake-user' autoComplete='username' hidden />
+      <input
+        type='password'
+        name='fake-password'
+        autoComplete='current-password'
+        hidden
+      />
       <>
         <div className='pb-6'>
           <Input
@@ -35,6 +44,7 @@ export const ProfileUI: FC<ProfileUIProps> = ({
             errorText={''}
             size={'default'}
             icon={'EditIcon'}
+            autoComplete='off'
           />
         </div>
         <div className='pb-6'>
@@ -48,6 +58,7 @@ export const ProfileUI: FC<ProfileUIProps> = ({
             errorText={''}
             size={'default'}
             icon={'EditIcon'}
+            autoComplete='off'
           />
         </div>
         <div className='pb-6'>
@@ -61,6 +72,7 @@ export const ProfileUI: FC<ProfileUIProps> = ({
             errorText={''}
             size={'default'}
             icon={'EditIcon'}
+            autoComplete='new-password'
           />
         </div>
         {isFormChanged && (
