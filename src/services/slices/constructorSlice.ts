@@ -22,21 +22,24 @@ const constructorSlice = createSlice({
   name: 'constructor',
   initialState,
   reducers: {
-    // Добавление ингредиента
-    addIngredient: (state, action: PayloadAction<TIngredient>) => {
-      const ingredient = action.payload;
-
-      if (ingredient.type === 'bun') {
-        state.bun = ingredient;
-      } else {
-        state.ingredients = [
-          ...state.ingredients,
-          {
-            ...ingredient,
-            id: uuidv4()
-          }
-        ];
-      }
+    // Добавление ингредиента (uuid в prepare, чтобы редьюсер оставался чистым)
+    addIngredient: {
+      reducer: (
+        state,
+        { payload }: PayloadAction<TIngredient | TConstructorItem>
+      ) => {
+        if (payload.type === 'bun') {
+          state.bun = payload;
+        } else {
+          state.ingredients.push(payload as TConstructorItem);
+        }
+      },
+      prepare: (ingredient: TIngredient) => ({
+        payload:
+          ingredient.type === 'bun'
+            ? ingredient
+            : { ...ingredient, id: uuidv4() }
+      })
     },
     // Удаление ингредиента
     removeIngredient: (state, action: PayloadAction<string>) => {
