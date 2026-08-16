@@ -33,26 +33,7 @@ const initialState: TFeedState = {
 const feedSlice = createSlice({
   name: 'feed',
   initialState,
-  reducers: {
-    // 👇 WebSocket-экшены
-    wsConnect: (state) => {
-      state.loading = true;
-      state.error = null;
-    },
-    wsDisconnect: (state) => {
-      state.loading = false;
-    },
-    wsMessage: (state, action) => {
-      state.loading = false;
-      state.orders = action.payload.orders;
-      state.total = action.payload.total;
-      state.totalToday = action.payload.totalToday;
-    },
-    wsError: (state, action) => {
-      state.loading = false;
-      state.error = action.payload;
-    }
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
       .addCase(fetchFeeds.pending, (state) => {
@@ -71,10 +52,6 @@ const feedSlice = createSlice({
       });
   }
 });
-
-// Экспорт действий
-export const { wsConnect, wsDisconnect, wsMessage, wsError } =
-  feedSlice.actions;
 
 // Экспорт редьюсера
 export default feedSlice.reducer;
