@@ -1,6 +1,8 @@
 import { FC, memo, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-
+// Подключаем селектор для получения ингредиентов из стора
+import { useSelector } from '../../services/store';
+import { getIngredients } from '../../services/selectors/ingredientsSelectors';
 import { OrderCardProps } from './type';
 import { TIngredient } from '@utils-types';
 import { OrderCardUI } from '../ui/order-card';
@@ -10,8 +12,8 @@ const maxIngredients = 6;
 export const OrderCard: FC<OrderCardProps> = memo(({ order }) => {
   const location = useLocation();
 
-  /** TODO: взять переменную из стора */
-  const ingredients: TIngredient[] = [];
+  // Получаем ингредиенты из стора вместо заглушки
+  const ingredients = useSelector(getIngredients);
 
   const orderInfo = useMemo(() => {
     if (!ingredients.length) return null;
